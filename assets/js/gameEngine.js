@@ -1,4 +1,4 @@
-var game = new Phaser.Game(800,400, Phaser.AUTO,'gameContainer', {
+var game = new Phaser.Game(window.innerWidth,window.innerHeight, Phaser.AUTO,'gameContainer', {
 	preload: preload, create: create
 });
 
@@ -8,7 +8,9 @@ function preload(){
 
 function create(){
 	game.add.sprite(10,20,'logo');
+	game.stage.backgroundColor = '#ffffff';
 };
+
 function update(){
 	
 };
