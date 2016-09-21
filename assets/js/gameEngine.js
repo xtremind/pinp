@@ -1,19 +1,13 @@
-var game = new Phaser.Game(window.innerWidth,window.innerHeight, Phaser.AUTO,'gameContainer', {
-	preload: preload, create: create
-});
+window.onload = function () {
+    //Initialise game variable
+    var game = new Phaser.Game(800, 600, Phaser.CANVAS, 'gameContainer');
+    
+    //Declare states
+    game.state.add('Boot', Game.Boot);
+    game.state.add('Preloader', Game.Preloader);
+    game.state.add('MainMenu', Game.MainMenu);
+    game.state.add('Level1', Game.Level1);
 
-function preload(){
-	game.load.image('logo','/assets/img/phaser.png');
+    //Launch Boot state
+    game.state.start('Boot');
 };
-
-function create(){
-	game.add.sprite(10,20,'logo');
-	game.stage.backgroundColor = '#ffffff';
-};
-
-function update(){
-	
-};
-
-
-
