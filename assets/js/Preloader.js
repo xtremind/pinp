@@ -13,7 +13,7 @@ Game.Preloader.prototype = {
         this.load.setPreloadSprite(this.preloadBar);
         
         //Load all assets
-        this.load.tilemap('map', 'assets/tileset/level1.json');
+        this.load.tilemap('map', 'assets/tileset/level1.csv');
         this.load.image('tileset', 'assets/img/tileset_map2.png');
     },
     

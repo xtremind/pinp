@@ -1,8 +1,7 @@
 Game.Level1 = function (game) {
 };
 
-var map ;
-var layer;
+var map, layer;
 
 Game.Level1.prototype = {
     create : function () {
