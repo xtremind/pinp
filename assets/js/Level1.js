@@ -1,39 +1,51 @@
 Game.Level1 = function (game) {
 };
 
-var map, layer;
 
-var player;
-var controls = {};
-var playerSpeed = 150;
 
 var DIRECTION = { UP : "UP", DOWN : "DOWN", LEFT : "LEFT", RIGHT : "RIGHT"};
+
+Game.Level1 = function (game) {
+    
+    this.map; 
+    this.layer;
+    
+    this.players = [];
+    this.playerSpeed = 150;
+    
+    this.gridsize = 32;
+    this.safetile = 390;
+    this.threshold = 3;
+};
 
 Game.Level1.prototype = {
     create : function () {
         this.stage.backgroundColor = '#3A5963';
                 
-        map = this.add.tilemap('map', 32, 32);
-        map.addTilesetImage('tileset');
-        layer = map.createLayer(0);
+        this.map = this.add.tilemap('map', 32, 32);
+        this.map.addTilesetImage('tileset');
+        this.layer = this.map.createLayer(0);
         
-        layer.resizeWorld();
+        this.layer.resizeWorld();
         
-        map.setCollisionBetween(0, 2);
+        this.map.setCollisionBetween(0, 2);
         
-        this.safetile = 390;
                 
         //  hero should collide with everything except the safe tile
-        map.setCollisionByExclusion([this.safetile], true, this.layer);
+        this.map.setCollisionByExclusion([this.safetile], true, this.layer);
         
-        player = this.add.sprite(100, 560, 'player');
-        player.anchor.setTo(0.5, 0.5);
-        player.direction = DIRECTION.RIGHT;
+        this.players[0] = this.add.sprite(100, 560, 'player');
+        this.players[0].anchor.setTo(0.5, 0.5);
+        this.players[0].surroundings = [];
+        this.players[0].direction = DIRECTION.RIGHT;
+        this.players[0].marker = new Phaser.Point;
+        //this.players[0].turnPoint = new Phaser.Point;
+        //this.players[0].turnTo = DIRECTION.NONE;
                 
-        this.physics.arcade.enable(player);
-        player.body.collideWorldBounds = true;
+        this.physics.arcade.enable(this.players[0]);
+        this.players[0].body.collideWorldBounds = true;
         
-        controls = {
+        this.players[0].controls = {
             right: this.input.keyboard.addKey(Phaser.Keyboard.RIGHT),
             left: this.input.keyboard.addKey(Phaser.Keyboard.LEFT),
             up: this.input.keyboard.addKey(Phaser.Keyboard.UP),
@@ -43,50 +55,87 @@ Game.Level1.prototype = {
     },
     
     update : function () {
-        this.physics.arcade.collide(player, layer);
+        this.physics.arcade.collide(this.players[0], this.layer);
+        this.checkSurroundings(this.players[0]);
+        this.checkKeys(this.players[0]);
+        this.move(this.players[0])
+    },
+    
+    checkSurroundings: function(player){
         
-        if (controls.up.isDown) {
-            player.direction = DIRECTION.UP;
-        } else if (controls.down.isDown) {
-            player.direction = DIRECTION.DOWN;
-        } else if (controls.left.isDown) {
-            player.direction = DIRECTION.LEFT;
-        } else if (controls.right.isDown) {
-            player.direction = DIRECTION.RIGHT;
+        player.marker.x = this.math.snapToFloor(Math.floor(player.x), this.gridsize) / this.gridsize;
+        player.marker.y = this.math.snapToFloor(Math.floor(player.y), this.gridsize) / this.gridsize;
+
+        //  Update our grid sensors
+        player.surroundings[DIRECTION.LEFT] = this.map.getTileLeft(this.layer.index, player.marker.x, player.marker.y);
+        player.surroundings[DIRECTION.RIGHT] = this.map.getTileRight(this.layer.index, player.marker.x, player.marker.y);
+        player.surroundings[DIRECTION.UP] = this.map.getTileAbove(this.layer.index, player.marker.x, player.marker.y);
+        player.surroundings[DIRECTION.DOWN] = this.map.getTileBelow(this.layer.index, player.marker.x, player.marker.y);
+    },
+    
+    checkKeys: function(player){
+        if (player.controls.up.isDown) {
+            this.checkDirections(player, DIRECTION.UP);
+        } else if (player.controls.down.isDown) {
+            this.checkDirections(player, DIRECTION.DOWN);
+        } else if (player.controls.left.isDown) {
+            this.checkDirections(player, DIRECTION.LEFT);
+        } else if (player.controls.right.isDown) {
+            this.checkDirections(player, DIRECTION.RIGHT);
+        } else {
+            this.checkDirections(player, player.direction);
         }
-        
+    },
+    
+    checkDirections: function(player, turnTo){
+        if ((player.direction === turnTo)||(player.surroundings[turnTo] === null) || (player.surroundings[turnTo].index !== this.safetile)){
+            // impossible de tourner, il y a un mur 
+            return;
+        } else {
+            //if((player.surroundings[turnTo].worldX === player.x)&&(player.surroundings[turnTo].worldY === player.y)){
+                player.direction = turnTo;
+            //}
+        }
+    },
+    
+    move: function(player){
         player.body.velocity.x = 0;
         player.body.velocity.y = 0;
-                        
+        
         switch (player.direction) {
         case DIRECTION.RIGHT:
-            if (!player.body.touching.right) {
-                player.angle = 0;
-                player.scale.setTo(1, 1);
-                player.body.velocity.x += playerSpeed;
-            }
+            player.angle = 0;
+            player.scale.setTo(1, 1);
+            player.body.velocity.x += this.playerSpeed;
             break;
         case DIRECTION.LEFT:
-            if (!player.body.touching.left) {
-                player.angle = 0;
-                player.scale.setTo(-1, 1);
-                player.body.velocity.x -= playerSpeed;
-            }
+            player.angle = 0;
+            player.scale.setTo(-1, 1);
+            player.body.velocity.x -= this.playerSpeed;
             break;
         case DIRECTION.UP:
-            if (!player.body.touching.up) {
-                player.angle = 270;
-                player.scale.setTo(1, 1);
-                player.body.velocity.y -= playerSpeed;
-            }
+            player.angle = 270;
+            player.scale.setTo(1, 1);
+            player.body.velocity.y -= this.playerSpeed;
             break;
         case DIRECTION.DOWN:
-            if (!player.body.touching.down) {
-                player.angle = 90;
-                player.scale.setTo(1, 1);
-                player.body.velocity.y += playerSpeed;
-            }
+            player.angle = 90;
+            player.scale.setTo(1, 1);
+            player.body.velocity.y += this.playerSpeed;
             break;
+        }
+    },
+    
+    render: function(){
+        
+        for (direction in this.players[0].surroundings){
+            tile = this.players[0].surroundings[direction];
+            var color = 'rgba(0,255,0,0.3)';
+            if (tile.index !== this.safetile){
+                color = 'rgba(255,0,0,0.3)';
+            }
+            
+            this.game.debug.geom(new Phaser.Rectangle(tile.worldX, tile.worldY, 32, 32), color, true);
         }
     }
 };
