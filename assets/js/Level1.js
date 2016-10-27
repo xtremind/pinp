@@ -4,6 +4,7 @@ Game.Level1 = function (game) {
 
 
 var DIRECTION = { UP : "UP", DOWN : "DOWN", LEFT : "LEFT", RIGHT : "RIGHT"};
+var NDIRECTION = { UP : "DOWN", DOWN : "UP", LEFT : "RIGHT", RIGHT : "LEFT"};
 
 Game.Level1 = function (game) {
     
@@ -34,7 +35,7 @@ Game.Level1.prototype = {
         //  hero should collide with everything except the safe tile
         this.map.setCollisionByExclusion([this.safetile], true, this.layer);
         
-        this.players[0] = this.add.sprite(100, 560, 'player');
+        this.players[0] = this.add.sprite(48, 48, 'player');
         this.players[0].anchor.setTo(0.5, 0.5);
         this.players[0].surroundings = [];
         this.players[0].direction = DIRECTION.RIGHT;
@@ -82,9 +83,7 @@ Game.Level1.prototype = {
             this.checkDirections(player, DIRECTION.LEFT);
         } else if (player.controls.right.isDown) {
             this.checkDirections(player, DIRECTION.RIGHT);
-        } else {
-            this.checkDirections(player, player.direction);
-        }
+        }         
     },
     
     checkDirections: function(player, turnTo){
@@ -92,9 +91,27 @@ Game.Level1.prototype = {
             // impossible de tourner, il y a un mur 
             return;
         } else {
-            //if((player.surroundings[turnTo].worldX === player.x)&&(player.surroundings[turnTo].worldY === player.y)){
+            if(player.direction === NDIRECTION[turnTo]){
+                //je peux faire demi-tour
                 player.direction = turnTo;
-            //}
+                return;
+            }
+            
+            //sinon, je ne peux tourner qu'à un emplacement specifique
+            switch (turnTo) {
+            case DIRECTION.RIGHT:
+            case DIRECTION.LEFT:
+                if (this.math.fuzzyEqual(player.y-16, player.surroundings[turnTo].worldY, this.threshold)){
+                    player.direction = turnTo;
+                }
+                break;
+            case DIRECTION.UP:
+            case DIRECTION.DOWN:
+                if (this.math.fuzzyEqual(player.x-16, player.surroundings[turnTo].worldY, this.threshold)){
+                    player.direction = turnTo;
+                }
+                break;
+            }
         }
     },
     
