@@ -1,6 +1,6 @@
-Game.Level1 = function (game) {    
-    this.map; 
-    this.layer;
+Game.Level1 = function (game) {
+    this.map = {}; 
+    this.layer = {};
     
     this.players = [];
     this.playerSpeed = 150;
@@ -19,7 +19,7 @@ Game.Level1.prototype = {
     create : function () {
         this.stage.backgroundColor = '#3A5963';
                 
-        this.map = this.add.tilemap('map', 32, 32);
+        this.map = this.add.tilemap('map', this.gridsize, this.gridsize);
         this.map.addTilesetImage('tileset');
         this.layer = this.map.createLayer(0);
         
@@ -27,7 +27,7 @@ Game.Level1.prototype = {
         
         this.map.setCollisionBetween(0, 2);
         
-        if(this.debug) {
+        if (this.debug) {
             var style = { font: "15px Arial", wordWrap: true, align: "center", fill: "#ff0044", backgroundColor: "#ffff00"};
             this.text = this.add.text(700, 20, "text", style);
             this.text.anchor.set(0.5);
@@ -40,7 +40,7 @@ Game.Level1.prototype = {
         this.players[0].anchor.setTo(0.5, 0.5);
         this.players[0].surroundings = [];
         this.players[0].direction = DIRECTION.RIGHT;
-        this.players[0].marker = new Phaser.Point;
+        this.players[0].marker = new Phaser.Point();
                 
         this.physics.arcade.enable(this.players[0]);
         this.players[0].body.collideWorldBounds = true;
@@ -55,20 +55,23 @@ Game.Level1.prototype = {
     },
     
     update : function () {
-        this.physics.arcade.collide(this.players[0], this.layer);
-        this.checkSurroundings(this.players[0]);
-        this.checkKeys(this.players[0]);
-        this.move(this.players[0]);
-        if(this.debug) {
-            this.writePosition(this.players[0]);
+        for (index in this.players) {
+            var player = this.players[index];
+            this.physics.arcade.collide(player, this.layer);
+            this.checkSurroundings(player);
+            this.checkKeys(player);
+            this.move(player);
+            if (this.debug) {
+                this.writePosition(player);
+            }
         }
     },
     
-    writePosition: function(player){
-        this.text.setText("(" + player.x + ":" + player.marker.x*32+"/"+ player.y + ":" +player.marker.y*32+")");
+    writePosition: function (player) {
+        this.text.setText("(" + player.x + ":" + player.marker.x * this.gridsize + "/" + player.y + ":" + player.marker.y * this.gridsize + ")");
     },
     
-    checkSurroundings: function(player){
+    checkSurroundings: function (player) {
         
         player.marker.x = this.math.snapToFloor(Math.floor(player.x), this.gridsize) / this.gridsize;
         player.marker.y = this.math.snapToFloor(Math.floor(player.y), this.gridsize) / this.gridsize;
@@ -81,7 +84,7 @@ Game.Level1.prototype = {
         player.surroundings[DIRECTION.DOWN] = this.map.getTileBelow(this.layer.index, player.marker.x, player.marker.y);
     },
     
-    checkKeys: function(player){
+    checkKeys: function (player) {
         if (player.controls.up.isDown) {
             this.checkDirections(player, DIRECTION.UP);
         } else if (player.controls.down.isDown) {
@@ -95,49 +98,35 @@ Game.Level1.prototype = {
         }
     },
     
-    checkDirections: function(player, turnTo){
-        if((this.math.fuzzyEqual(player.y-16, player.marker.y*32, this.threshold)) && (this.math.fuzzyEqual(player.x-16, player.marker.x*32, this.threshold))){
-            if ((player.direction === turnTo) && (player.surroundings[turnTo].index !== this.safetile) ) {
+    checkDirections: function (player, turnTo) {
+        if (player.direction === NDIRECTION[turnTo]) {
+            //on attend pas d'être sur un croisement pour faire demi-tour
+            player.direction = turnTo;
+        } else if ((this.math.fuzzyEqual(player.y - player.body.halfHeight, player.marker.y * this.gridsize, this.threshold)) && (this.math.fuzzyEqual(player.x - player.body.halfWidth, player.marker.x * this.gridsize, this.threshold))) {
+            if ((player.direction === turnTo) && (player.surroundings[turnTo].index !== this.safetile)) {
                 //impossible d'avancer.
                 player.direction = null;
-                player.x =  player.marker.x*32 + 16;
-                player.y =  player.marker.y*32 + 16;
-                player.body.reset(player.x, player.y);
-            } else if ((player.surroundings[turnTo] === null) || (player.surroundings[turnTo].index !== this.safetile)){
+                this.alignPlayer(player);
+            } else if ((player.surroundings[turnTo] === null) || (player.surroundings[turnTo].index !== this.safetile)) {
                 // impossible de tourner, il y a un mur 
                 return;
             } else {
-                if(player.direction !== turnTo){
-                    player.x =  player.marker.x*32 + 16;
-                    player.y =  player.marker.y*32 + 16;
-                    player.body.reset(player.x, player.y);
+                if (player.direction !== turnTo) {
+                    this.alignPlayer(player);
                 }
-                if(player.direction === NDIRECTION[turnTo]){
-                    //je peux faire demi-tour
-                    player.direction = turnTo;
-                    return;
-                }
-
-                //sinon, je ne peux tourner qu'à un emplacement specifique
-                switch (turnTo) {
-                case DIRECTION.RIGHT:
-                case DIRECTION.LEFT:
-                    //if (this.math.fuzzyEqual(player.y-16, player.surroundings[turnTo].worldY, this.threshold)){
-                        player.direction = turnTo;
-                    //}
-                    break;
-                case DIRECTION.UP:
-                case DIRECTION.DOWN:
-                    //if (this.math.fuzzyEqual(player.x-16, player.surroundings[turnTo].worldY, this.threshold)){
-                        player.direction = turnTo;
-                    //}
-                    break;
-                }
-            }  
-        } 
+                
+                player.direction = turnTo;
+            }
+        }
     },
     
-    move: function(player){
+    alignPlayer: function (player) {
+        player.x =  player.marker.x * this.gridsize + player.body.halfWidth;
+        player.y =  player.marker.y * this.gridsize + player.body.halfHeight;
+        player.body.reset(player.x, player.y);
+    },
+    
+    move: function (player) {
         player.body.velocity.x = 0;
         player.body.velocity.y = 0;
         
@@ -165,16 +154,19 @@ Game.Level1.prototype = {
         }
     },
     
-    render: function(){
-        if(this.debug) {
-            for (direction in this.players[0].surroundings){
-                tile = this.players[0].surroundings[direction];
-                var color = 'rgba(0,255,0,0.3)';
-                if (tile !== null) {
-                    if (tile.index !== this.safetile){
-                        color = 'rgba(255,0,0,0.3)';
+    render: function () {
+        if (this.debug) {
+            for (index in this.players) {
+                player = this.players[index];
+                for (direction in player.surroundings) {
+                    tile = this.players[0].surroundings[direction];
+                    var color = 'rgba(0,255,0,0.3)';
+                    if (tile !== null) {
+                        if (tile.index !== this.safetile) {
+                            color = 'rgba(255,0,0,0.3)';
+                        }
+                        this.game.debug.geom(new Phaser.Rectangle(tile.worldX, tile.worldY, this.gridsize, this.gridsize), color, true);
                     }
-                    this.game.debug.geom(new Phaser.Rectangle(tile.worldX, tile.worldY, 32, 32), color, true);
                 }
             }
         }
