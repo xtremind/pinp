@@ -5,6 +5,8 @@ Game.Level1 = function (game) {
     this.players = [];
     this.playerSpeed = 150;
     
+    this.gums = [];
+    
     this.gridsize = 32;
     this.safetile = 390;
     this.threshold = 3;
@@ -34,6 +36,7 @@ Game.Level1.prototype = {
         //  hero should collide with everything except the safe tile
         this.map.setCollisionByExclusion([this.safetile], true, this.layer);
         
+        // Player's Part
         this.players[0] = this.add.sprite(48, 48, 'player');
         this.players[0].anchor.setTo(0.5, 0.5);
         this.players[0].surroundings = [];
@@ -42,6 +45,7 @@ Game.Level1.prototype = {
                 
         this.physics.arcade.enable(this.players[0]);
         this.players[0].body.collideWorldBounds = true;
+        this.players[0].score = 0;
         
         this.players[0].controls = {
             right: this.input.keyboard.addKey(Phaser.Keyboard.RIGHT),
@@ -50,6 +54,19 @@ Game.Level1.prototype = {
             down: this.input.keyboard.addKey(Phaser.Keyboard.DOWN)
         };
         
+        // big gum's Part
+        for (var nb = 0; nb < 2; nb++){
+			var bigGum = this.add.sprite(48*nb,48*nb,'bigGum');
+			bigGum.anchor.setTo(0.5, 0.5);
+			this.physics.arcade.enable(bigGum);
+			
+			this.gums.push(bigGum);
+		};
+        
+        // small Gum's Part
+        for (var nb = 0; nb < 10; nb++){
+			
+		};
     },
     
     update : function () {
