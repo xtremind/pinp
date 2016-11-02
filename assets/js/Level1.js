@@ -9,6 +9,11 @@ Game.Level1 = function (game) {
     
     this.gridsize = 32;
     this.safetile = 390;
+	this.bigGumTile = 7;
+	this.smallGumTile = 6;
+	
+	this.excludedTiles = [this.safetile, this.bigGumTile, this.smallGumTile];
+	
     this.threshold = 3;
     
     this.debug = false;
@@ -34,7 +39,7 @@ Game.Level1.prototype = {
         }
             
         //  hero should collide with everything except the safe tile
-        this.map.setCollisionByExclusion([this.safetile], true, this.layer);
+        this.map.setCollisionByExclusion(this.excludedTiles, true, this.layer);
         
         // Player's Part
         this.players[0] = this.add.sprite(48, 48, 'player');
@@ -55,24 +60,25 @@ Game.Level1.prototype = {
         };
         
         // big gum's Part
-        for (var nb = 0; nb < 2; nb++){
-			var bigGum = this.add.sprite(48*nb,48*nb,'bigGum');
-			bigGum.anchor.setTo(0.5, 0.5);
-			this.physics.arcade.enable(bigGum);
-			
-			this.gums.push(bigGum);
-		};
-        
+		this.bigGums = this.add.physicsGroup();
+		this.map.createFromTiles(this.bigGumTile, this.safetile, 'bigGum', this.layer, this.bigGums);
+		this.bigGums.setAll('x', 12, false, false, 1);
+		this.bigGums.setAll('y', 12, false, false, 1);
+		
         // small Gum's Part
-        for (var nb = 0; nb < 10; nb++){
-			
-		};
+		this.smallGums = this.add.physicsGroup();
+		this.map.createFromTiles(this.smallGumTile, this.safetile, 'smallGum', this.layer, this.smallGums);
+		this.smallGums.setAll('x', 12, false, false, 1);
+		this.smallGums.setAll('y', 12, false, false, 1);
+        
     },
     
     update : function () {
 		var that = this
         this.players.forEach(function(player) {
             that.physics.arcade.collide(player, that.layer);
+			that.physics.arcade.overlap(player, that.bigGums, that.eatBigGum, null, that);
+			that.physics.arcade.overlap(player, that.smallGums, that.eatSmallGum, null, that);
             that.checkSurroundings(player);
             that.checkKeys(player);
             that.move(player);
@@ -117,12 +123,13 @@ Game.Level1.prototype = {
         if (player.direction === NDIRECTION[turnTo]) {
             //on attend pas d'être sur un croisement pour faire demi-tour
             player.direction = turnTo;
-        } else if ((this.math.fuzzyEqual(player.y - player.body.halfHeight, player.marker.y * this.gridsize, this.threshold)) && (this.math.fuzzyEqual(player.x - player.body.halfWidth, player.marker.x * this.gridsize, this.threshold))) {
-            if ((player.direction === turnTo) && (player.surroundings[turnTo].index !== this.safetile)) {
+        } else if ((this.math.fuzzyEqual(player.y - player.body.halfHeight, player.marker.y * this.gridsize, this.threshold)) 
+				   && (this.math.fuzzyEqual(player.x - player.body.halfWidth, player.marker.x * this.gridsize, this.threshold))) {
+            if ((player.direction === turnTo) && (this.excludedTiles.indexOf(player.surroundings[turnTo].index) === -1)) {
                 //impossible d'avancer.
                 player.direction = null;
                 this.alignPlayer(player);
-            } else if ((player.surroundings[turnTo] === null) || (player.surroundings[turnTo].index !== this.safetile)) {
+            } else if ((player.surroundings[turnTo] === null) || (this.excludedTiles.indexOf(player.surroundings[turnTo].index) === -1)) {
                 // impossible de tourner, il y a un mur 
                 return;
             } else {
@@ -168,7 +175,15 @@ Game.Level1.prototype = {
             break;
         }
     },
-    
+	
+    eatBigGum: function (player, gum) {
+    	gum.kill();
+	},
+	
+    eatSmallGum: function (player, gum) {
+    	gum.kill();
+	},
+	
     render: function () {
         if (this.debug) {
             for (i in this.players) {
