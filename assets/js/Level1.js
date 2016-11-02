@@ -24,9 +24,7 @@ Game.Level1.prototype = {
         this.layer = this.map.createLayer(0);
         
         this.layer.resizeWorld();
-        
-        this.map.setCollisionBetween(0, 2);
-        
+                
         if (this.debug) {
             var style = { font: "15px Arial", wordWrap: true, align: "center", fill: "#ff0044", backgroundColor: "#ffff00"};
             this.text = this.add.text(700, 20, "text", style);
@@ -34,7 +32,7 @@ Game.Level1.prototype = {
         }
             
         //  hero should collide with everything except the safe tile
-        //this.map.setCollisionByExclusion([this.safetile], true, this.layer);
+        this.map.setCollisionByExclusion([this.safetile], true, this.layer);
         
         this.players[0] = this.add.sprite(48, 48, 'player');
         this.players[0].anchor.setTo(0.5, 0.5);
@@ -55,16 +53,16 @@ Game.Level1.prototype = {
     },
     
     update : function () {
-        for (index in this.players) {
-            var player = this.players[index];
-            this.physics.arcade.collide(player, this.layer);
-            this.checkSurroundings(player);
-            this.checkKeys(player);
-            this.move(player);
-            if (this.debug) {
-                this.writePosition(player);
+		var that = this
+        this.players.forEach(function(player) {
+            that.physics.arcade.collide(player, that.layer);
+            that.checkSurroundings(player);
+            that.checkKeys(player);
+            that.move(player);
+            if (that.debug) {
+                that.writePosition(player);
             }
-        }
+        });
     },
     
     writePosition: function (player) {
@@ -156,8 +154,8 @@ Game.Level1.prototype = {
     
     render: function () {
         if (this.debug) {
-            for (index in this.players) {
-                player = this.players[index];
+            for (i in this.players) {
+                player = this.players[i];
                 for (direction in player.surroundings) {
                     tile = this.players[0].surroundings[direction];
                     var color = 'rgba(0,255,0,0.3)';
