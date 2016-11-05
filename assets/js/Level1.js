@@ -2,7 +2,8 @@ Game.Level1 = function (game) {
     this.map = {}; 
     this.layer = {};
     
-    this.players = [];
+    this.player = {};
+    this.otherPlayers = [];
     this.playerSpeed = 150;
     
     this.gums = [];
@@ -42,17 +43,17 @@ Game.Level1.prototype = {
         this.map.setCollisionByExclusion(this.excludedTiles, true, this.layer);
         
         // Player's Part
-        this.players[0] = this.add.sprite(48, 48, 'player');
-        this.players[0].anchor.setTo(0.5, 0.5);
-        this.players[0].surroundings = [];
-        this.players[0].direction = DIRECTION.RIGHT;
-        this.players[0].marker = new Phaser.Point();
+        this.player = this.add.sprite(48, 48, 'player');
+        this.player.anchor.setTo(0.5, 0.5);
+        this.player.surroundings = [];
+        this.player.direction = DIRECTION.RIGHT;
+        this.player.marker = new Phaser.Point();
                 
-        this.physics.arcade.enable(this.players[0]);
-        this.players[0].body.collideWorldBounds = true;
-        this.players[0].score = 0;
+        this.physics.arcade.enable(this.player);
+        this.player.body.collideWorldBounds = true;
+        this.player.score = 0;
         
-        this.players[0].controls = {
+        this.player.controls = {
             right: this.input.keyboard.addKey(Phaser.Keyboard.RIGHT),
             left: this.input.keyboard.addKey(Phaser.Keyboard.LEFT),
             up: this.input.keyboard.addKey(Phaser.Keyboard.UP),
@@ -74,18 +75,15 @@ Game.Level1.prototype = {
     },
     
     update : function () {
-		var that = this
-        this.players.forEach(function(player) {
-            that.physics.arcade.collide(player, that.layer);
-			that.physics.arcade.overlap(player, that.bigGums, that.eatBigGum, null, that);
-			that.physics.arcade.overlap(player, that.smallGums, that.eatSmallGum, null, that);
-            that.checkSurroundings(player);
-            that.checkKeys(player);
-            that.move(player);
-            if (that.debug) {
-                that.writePosition(player);
-            }
-        });
+		this.physics.arcade.collide(this.player, this.layer);
+		this.physics.arcade.overlap(this.player, this.bigGums, this.eatBigGum, null, this);
+		this.physics.arcade.overlap(this.player, this.smallGums, this.eatSmallGum, null, this);
+		this.checkSurroundings(this.player);
+		this.checkKeys(this.player);
+		this.move(this.player);
+		if (this.debug) {
+			this.writePosition(this.player);
+		}
     },
     
     writePosition: function (player) {
@@ -186,19 +184,16 @@ Game.Level1.prototype = {
 	
     render: function () {
         if (this.debug) {
-            for (i in this.players) {
-                player = this.players[i];
-                for (direction in player.surroundings) {
-                    tile = this.players[0].surroundings[direction];
-                    var color = 'rgba(0,255,0,0.3)';
-                    if (tile !== null) {
-                        if (tile.index !== this.safetile) {
-                            color = 'rgba(255,0,0,0.3)';
-                        }
-                        this.game.debug.geom(new Phaser.Rectangle(tile.worldX, tile.worldY, this.gridsize, this.gridsize), color, true);
-                    }
-                }
-            }
+			for (direction in this.player.surroundings) {
+				tile = this.player.surroundings[direction];
+				var color = 'rgba(0,255,0,0.3)';
+				if (tile !== null) {
+					if (tile.index !== this.safetile) {
+						color = 'rgba(255,0,0,0.3)';
+					}
+					this.game.debug.geom(new Phaser.Rectangle(tile.worldX, tile.worldY, this.gridsize, this.gridsize), color, true);
+				}
+			}
         }
     }
 };
