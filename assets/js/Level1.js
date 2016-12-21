@@ -1,9 +1,17 @@
 Game.Level1 = function (game) {
-    this.map = {}; 
+	this.uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+		var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
+		return v.toString(16);
+	});
+	
+	this.socket = {};
+	
+    this.map = {};
     this.layer = {};
     
     this.players = [];
     this.playerSpeed = 150;
+	this.ennemies = [];
     
     this.gums = [];
     
@@ -17,6 +25,7 @@ Game.Level1 = function (game) {
     this.threshold = 3;
     
     this.debug = false;
+	
 };
 
 var DIRECTION = { UP : "UP", DOWN : "DOWN", LEFT : "LEFT", RIGHT : "RIGHT"};
@@ -24,6 +33,8 @@ var NDIRECTION = { UP : "DOWN", DOWN : "UP", LEFT : "RIGHT", RIGHT : "LEFT"};
 
 Game.Level1.prototype = {
     create : function () {
+		var that = this;
+		
         this.stage.backgroundColor = '#3A5963';
                 
         this.map = this.add.tilemap('map', this.gridsize, this.gridsize);
@@ -32,15 +43,22 @@ Game.Level1.prototype = {
         
         this.layer.resizeWorld();
                 
+        var style = { font: "15px Arial", wordWrap: true, align: "center", fill: "#ff0044", backgroundColor: "#ffff00"};
+			
         if (this.debug) {
-            var style = { font: "15px Arial", wordWrap: true, align: "center", fill: "#ff0044", backgroundColor: "#ffff00"};
             this.text = this.add.text(700, 20, "text", style);
             this.text.anchor.set(0.5);
         }
-            
+		
+		this.score = this.add.text(700, 20, "text", style);
+		this.score.anchor.set(0.5);
+		
         //  hero should collide with everything except the safe tile
         this.map.setCollisionByExclusion(this.excludedTiles, true, this.layer);
         
+		//connect to server
+		this.socket = io.connect('http://localhost:3000');
+		
         // Player's Part
         this.players[0] = this.add.sprite(48, 48, 'player');
         this.players[0].anchor.setTo(0.5, 0.5);
@@ -58,7 +76,19 @@ Game.Level1.prototype = {
             up: this.input.keyboard.addKey(Phaser.Keyboard.UP),
             down: this.input.keyboard.addKey(Phaser.Keyboard.DOWN)
         };
-        
+		
+		this.socket.emit('welcome', { 'id': this.uuid, 'x' :  this.players[0].x, 'y' :  this.players[0].y});
+		
+		this.socket.on('listPlayers', function (data) {
+			console.log(data);
+			data.forEach(function(ennemy){
+				if(ennemy != that.uuid && that.ennemies.indexOf(ennemy) === -1){
+					//this.addEnnemy(ennemy);
+					that.ennemies.push(ennemy);
+				}
+			});
+		});
+		
         // big gum's Part
 		this.bigGums = this.add.physicsGroup();
 		this.map.createFromTiles(this.bigGumTile, this.safetile, 'bigGum', this.layer, this.bigGums);
@@ -70,24 +100,36 @@ Game.Level1.prototype = {
 		this.map.createFromTiles(this.smallGumTile, this.safetile, 'smallGum', this.layer, this.smallGums);
 		this.smallGums.setAll('x', 12, false, false, 1);
 		this.smallGums.setAll('y', 12, false, false, 1);
-        
+		
     },
     
     update : function () {
-		var that = this
-        this.players.forEach(function(player) {
+		var that = this;
+        this.players.forEach(function (player) {
             that.physics.arcade.collide(player, that.layer);
 			that.physics.arcade.overlap(player, that.bigGums, that.eatBigGum, null, that);
 			that.physics.arcade.overlap(player, that.smallGums, that.eatSmallGum, null, that);
             that.checkSurroundings(player);
             that.checkKeys(player);
             that.move(player);
+			that.emitPosition(player);
+            that.writeScore(player);
             if (that.debug) {
                 that.writePosition(player);
             }
         });
     },
-    
+	
+	emitPosition: function (player) {
+		if(player.direction !== null){
+			this.socket.emit('position', { 'id': this.uuid, 'x' :  player.x, 'y' :  player.y});
+		}
+	},
+	
+    writeScore: function (player) {
+        this.score.setText("player : " + player.score);
+    },
+	
     writePosition: function (player) {
         this.text.setText("(" + player.x + ":" + player.marker.x * this.gridsize + "/" + player.y + ":" + player.marker.y * this.gridsize + ")");
     },
@@ -123,7 +165,7 @@ Game.Level1.prototype = {
         if (player.direction === NDIRECTION[turnTo]) {
             //on attend pas d'être sur un croisement pour faire demi-tour
             player.direction = turnTo;
-        } else if ((this.math.fuzzyEqual(player.y - player.body.halfHeight, player.marker.y * this.gridsize, this.threshold)) 
+        } else if ((this.math.fuzzyEqual(player.y - player.body.halfHeight, player.marker.y * this.gridsize, this.threshold))
 				   && (this.math.fuzzyEqual(player.x - player.body.halfWidth, player.marker.x * this.gridsize, this.threshold))) {
             if ((player.direction === turnTo) && (this.excludedTiles.indexOf(player.surroundings[turnTo].index) === -1)) {
                 //impossible d'avancer.
@@ -177,10 +219,12 @@ Game.Level1.prototype = {
     },
 	
     eatBigGum: function (player, gum) {
+		player.score += 10;
     	gum.kill();
 	},
 	
     eatSmallGum: function (player, gum) {
+		player.score += 1;
     	gum.kill();
 	},
 	
