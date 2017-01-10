@@ -11,7 +11,7 @@ Game.Level1 = function (game) {
 
 	this.players = [];
 	this.playerSpeed = 150;
-	this.ennemies = [];
+	this.remotePlayers = [];
 
 	this.gums = [];
 
@@ -59,6 +59,12 @@ Game.Level1.prototype = {
 		//connect to server
 		this.socket = io.connect('http://localhost:3000');
 
+		this.socket.on("connect", that.onSocketConnected);
+		this.socket.on("disconnect", that.onSocketDisconnect);
+		this.socket.on("new player", that.onNewPlayer);
+		this.socket.on("move player", that.onMovePlayer);
+		this.socket.on("remove player", that.onRemovePlayer);
+
 		// Player's Part
 		this.players[0] = this.add.sprite(48, 48, 'player');
 		this.players[0].anchor.setTo(0.5, 0.5);
@@ -77,17 +83,7 @@ Game.Level1.prototype = {
 			down: this.input.keyboard.addKey(Phaser.Keyboard.DOWN)
 		};
 
-		this.socket.emit('welcome', { 'id': this.uuid, 'x' :  this.players[0].x, 'y' :  this.players[0].y});
-
-		this.socket.on('listPlayers', function (data) {
-			console.log(data);
-			data.forEach(function(ennemy){
-				if(ennemy != that.uuid && that.ennemies.indexOf(ennemy) === -1){
-					//this.addEnnemy(ennemy);
-					that.ennemies.push(ennemy);
-				}
-			});
-		});
+		this.socket.emit('new player', {'x' :  this.players[0].x, 'y' :  this.players[0].y});
 
 		// big gum's Part
 		this.bigGums = this.add.physicsGroup();
@@ -119,10 +115,31 @@ Game.Level1.prototype = {
 			}
 		});
 	},
+	
+	onSocketConnected: function () {
+		console.log("Connected to socket server");
+	},
+
+	onSocketDisconnect: function () {
+		console.log("Disconnected from socket server");
+	},
+
+	onNewPlayer: function (data) {
+		console.log("New player connected: "+data.id);
+		this.remotePlayers.push(data);
+	},
+
+	onMovePlayer: function (data) {
+		console.log("player on move: "+data.id);
+	},
+
+	onRemovePlayer: function (data) {
+		console.log("player removed: "+data.id);
+	},
 
 	emitPosition: function (player) {
 		if(player.direction !== null){
-			this.socket.emit('position', { 'id': this.uuid, 'x' :  player.x, 'y' :  player.y});
+			this.socket.emit('move player', {'x' :  this.players[0].x, 'y' :  this.players[0].y});
 		}
 	},
 
