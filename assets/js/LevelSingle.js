@@ -1,17 +1,10 @@
-Game.Level1 = function (game) {
-	this.uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-		var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
-		return v.toString(16);
-	});
-
-	this.socket = {};
-
+Game.LevelSingle = function (game) {
 	this.map = {};
 	this.layer = {};
 
-	this.players = [];
+	this.player = {};
 	this.playerSpeed = 150;
-	this.remotePlayers = [];
+	this.phantoms = [];
 
 	this.gums = [];
 
@@ -31,7 +24,7 @@ Game.Level1 = function (game) {
 var DIRECTION = { UP : "UP", DOWN : "DOWN", LEFT : "LEFT", RIGHT : "RIGHT"};
 var NDIRECTION = { UP : "DOWN", DOWN : "UP", LEFT : "RIGHT", RIGHT : "LEFT"};
 
-Game.Level1.prototype = {
+Game.LevelSingle.prototype = {
 	create : function () {
 		var that = this;
 
@@ -56,34 +49,33 @@ Game.Level1.prototype = {
 		//  hero should collide with everything except the safe tile
 		this.map.setCollisionByExclusion(this.excludedTiles, true, this.layer);
 
-		//connect to server
-		this.socket = io.connect('http://localhost:3000');
-
-		this.socket.on("connect", that.onSocketConnected);
-		this.socket.on("disconnect", that.onSocketDisconnect);
-		this.socket.on("new player", that.onNewPlayer);
-		this.socket.on("move player", that.onMovePlayer);
-		this.socket.on("remove player", that.onRemovePlayer);
-
 		// Player's Part
-		this.players[0] = this.add.sprite(48, 48, 'player');
-		this.players[0].anchor.setTo(0.5, 0.5);
-		this.players[0].surroundings = [];
-		this.players[0].direction = DIRECTION.RIGHT;
-		this.players[0].marker = new Phaser.Point();
+		this.player = this.add.sprite(48, 48, 'player');
+		this.player.anchor.setTo(0.5, 0.5);
+		this.player.surroundings = [];
+		this.player.direction = DIRECTION.RIGHT;
+		this.player.marker = new Phaser.Point();
 
-		this.physics.arcade.enable(this.players[0]);
-		this.players[0].body.collideWorldBounds = true;
-		this.players[0].score = 0;
+		this.physics.arcade.enable(this.player);
+		this.player.body.collideWorldBounds = true;
+		this.player.score = 0;
 
-		this.players[0].controls = {
+		this.player.controls = {
 			right: this.input.keyboard.addKey(Phaser.Keyboard.RIGHT),
 			left: this.input.keyboard.addKey(Phaser.Keyboard.LEFT),
 			up: this.input.keyboard.addKey(Phaser.Keyboard.UP),
 			down: this.input.keyboard.addKey(Phaser.Keyboard.DOWN)
 		};
+		
+		// Phatom's Part
+		this.phantoms[0] = this.add.sprite(336, 336, 'phantom');
+		this.phantoms[0].anchor.setTo(0.5, 0.5);
+		this.phantoms[0].surroundings = [];
+		this.phantoms[0].direction = DIRECTION.LEFT;
+		this.phantoms[0].marker = new Phaser.Point();
 
-		this.socket.emit('new player', {'x' :  this.players[0].x, 'y' :  this.players[0].y});
+		this.physics.arcade.enable(this.phantoms[0]);
+		this.phantoms[0].body.collideWorldBounds = true;
 
 		// big gum's Part
 		this.bigGums = this.add.physicsGroup();
@@ -100,46 +92,41 @@ Game.Level1.prototype = {
 	},
 
 	update : function () {
-		var that = this;
-		this.players.forEach(function (player) {
-			that.physics.arcade.collide(player, that.layer);
-			that.physics.arcade.overlap(player, that.bigGums, that.eatBigGum, null, that);
-			that.physics.arcade.overlap(player, that.smallGums, that.eatSmallGum, null, that);
-			that.checkSurroundings(player);
-			that.checkKeys(player);
-			that.move(player);
-			that.emitPosition(player);
-			that.writeScore(player);
-			if (that.debug) {
-				that.writePosition(player);
-			}
-		});
-	},
-	
-	onSocketConnected: function () {
-		console.log("Connected to socket server");
-	},
-
-	onSocketDisconnect: function () {
-		console.log("Disconnected from socket server");
+		//physics
+		this.physics.arcade.collide(this.player, this.layer);
+		this.physics.arcade.overlap(this.player, this.bigGums, this.eatBigGum, null, this);
+		this.physics.arcade.overlap(this.player, this.smallGums, this.eatSmallGum, null, this);
+		this.physics.arcade.collide(this.phantoms[0], this.layer);
+		this.physics.arcade.collide(this.player, this.phantoms[0]); //actuellement, les éléments se poussent à tort. utiliser overlap
+		
+		//phantoms' part
+		this.checkSurroundings(this.phantoms[0]);
+		this.chooseDirection(this.phantoms[0], this.player);
+		this.move(this.phantoms[0]);
+		
+		//player's part
+		this.checkSurroundings(this.player);
+		this.checkKeys(this.player);
+		this.move(this.player);
+		this.writeScore(this.player);
+		if (this.debug) {
+			this.writePosition(this.player);
+		}
 	},
 
-	onNewPlayer: function (data) {
-		console.log("New player connected: "+data.id);
-		this.remotePlayers.push(data);
-	},
-
-	onMovePlayer: function (data) {
-		console.log("player on move: "+data.id);
-	},
-
-	onRemovePlayer: function (data) {
-		console.log("player removed: "+data.id);
-	},
-
-	emitPosition: function (player) {
-		if(player.direction !== null){
-			this.socket.emit('move player', {'x' :  this.players[0].x, 'y' :  this.players[0].y});
+	chooseDirection: function(phantom, player){
+		var rand =  Math.floor((Math.random() * 5) + 1); ; 
+		
+		if (rand === 1) {
+			this.checkDirections(phantom, DIRECTION.UP);
+		} else if (rand === 2) {
+			this.checkDirections(phantom, DIRECTION.DOWN);
+		} else if (rand === 3) {
+			this.checkDirections(phantom, DIRECTION.LEFT);
+		} else if (rand === 4) {
+			this.checkDirections(phantom, DIRECTION.RIGHT);
+		} else if (rand === 5) {
+			this.checkDirections(phantom, phantom.direction);
 		}
 	},
 

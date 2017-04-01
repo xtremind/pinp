@@ -17,11 +17,12 @@ Game.Preloader.prototype = {
         this.load.image('tileset', 'assets/img/tileset_map2.png');
         
         this.load.spritesheet('player', 'assets/img/player.png');
+        this.load.spritesheet('phantom', 'assets/img/player.png');
         this.load.spritesheet('smallGum', 'assets/img/small_gum.png');
         this.load.spritesheet('bigGum', 'assets/img/big_gum.png');
     },
     
     create : function () {
-        this.state.start('Level1');
+        this.state.start('LevelSingle');
     }
 };
