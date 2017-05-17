@@ -68,19 +68,10 @@ Game.LevelSingle.prototype = {
 		};
 		
 		// ghosts' Part
-		/*this.ghosts = this.game.add.group();
+		this.ghosts = this.game.add.group();
 		this.ghosts.enableBody = true;
-		this.ghosts.createMultiple(10, 'phantom')
-		this.game.time.events.loop(2000, this.addGhost, this);*/
-
-		this.ghosts[0] = this.add.sprite(336, 336, 'phantom');
-		this.ghosts[0].anchor.setTo(0.5, 0.5);
-		this.ghosts[0].surroundings = [];
-		this.ghosts[0].direction = DIRECTION.LEFT;
-		this.ghosts[0].marker = new Phaser.Point();
-
-		this.physics.arcade.enable(this.ghosts[0]);
-		this.ghosts[0].body.collideWorldBounds = true;
+		this.ghosts.createMultiple(40, 'phantom')
+		this.game.time.events.loop(5000, this.addGhost, this);
 
 		// big gum's Part
 		this.bigGums = this.add.physicsGroup();
@@ -97,17 +88,21 @@ Game.LevelSingle.prototype = {
 	},
 
 	update : function () {
+		that = this;
+
 		//physics
 		this.physics.arcade.collide(this.player, this.layer);
 		this.physics.arcade.overlap(this.player, this.bigGums, this.eatBigGum, null, this);
 		this.physics.arcade.overlap(this.player, this.smallGums, this.eatSmallGum, null, this);
-		this.physics.arcade.collide(this.ghosts[0], this.layer);
-		this.physics.arcade.overlap(this.player, this.ghosts[0], this.killPlayer, null, this);
+		this.physics.arcade.collide(this.ghosts, this.layer);
+		this.physics.arcade.overlap(this.player, this.ghosts, this.killPlayer, null, this);
 		
 		//ghosts' part
-		this.checkSurroundings(this.ghosts[0]);
-		this.chooseDirection(this.ghosts[0], this.player);
-		this.move(this.ghosts[0]);
+		this.ghosts.forEachAlive(function(ghost) {
+			that.checkSurroundings(ghost);
+			that.chooseDirection(ghost, this.player);
+			that.move(ghost);
+		});
 		
 		//player's part
 		this.checkSurroundings(this.player);
