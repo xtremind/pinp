@@ -101,7 +101,7 @@ Game.LevelSingle.prototype = {
 		//ghosts' part
 		this.ghosts.forEachAlive(function(ghost) {
 			that.checkSurroundings(ghost);
-			that.chooseDirection(ghost, this.player);
+			that.chooseDirection(ghost, that.player);
 			that.move(ghost);
 		});
 		
