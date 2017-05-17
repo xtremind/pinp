@@ -70,8 +70,9 @@ Game.LevelSingle.prototype = {
 		// ghosts' Part
 		this.ghosts = this.game.add.group();
 		this.ghosts.enableBody = true;
-		this.ghosts.createMultiple(40, 'phantom')
+		this.ghosts.createMultiple(40, 'phantom');
 		this.game.time.events.loop(5000, this.addGhost, this);
+		this.addGhost();
 
 		// big gum's Part
 		this.bigGums = this.add.physicsGroup();
