@@ -4,7 +4,7 @@ Game.LevelSingle = function (game) {
 
 	this.player = {};
 	this.playerSpeed = 150;
-	this.phantoms = [];
+	this.ghosts = [];
 
 	this.gums = [];
 
@@ -39,7 +39,7 @@ Game.LevelSingle.prototype = {
 		var style = { font: "15px Arial", wordWrap: true, align: "center", fill: "#ff0044", backgroundColor: "#ffff00"};
 
 		if (this.debug) {
-			this.text = this.add.text(700, 20, "text", style);
+			this.text = this.add.text(700, this.world.height-20, "text", style);
 			this.text.anchor.set(0.5);
 		}
 
@@ -67,15 +67,20 @@ Game.LevelSingle.prototype = {
 			down: this.input.keyboard.addKey(Phaser.Keyboard.DOWN)
 		};
 		
-		// Phatom's Part
-		this.phantoms[0] = this.add.sprite(336, 336, 'phantom');
-		this.phantoms[0].anchor.setTo(0.5, 0.5);
-		this.phantoms[0].surroundings = [];
-		this.phantoms[0].direction = DIRECTION.LEFT;
-		this.phantoms[0].marker = new Phaser.Point();
+		// ghosts' Part
+		/*this.ghosts = this.game.add.group();
+		this.ghosts.enableBody = true;
+		this.ghosts.createMultiple(10, 'phantom')
+		this.game.time.events.loop(2000, this.addGhost, this);*/
 
-		this.physics.arcade.enable(this.phantoms[0]);
-		this.phantoms[0].body.collideWorldBounds = true;
+		this.ghosts[0] = this.add.sprite(336, 336, 'phantom');
+		this.ghosts[0].anchor.setTo(0.5, 0.5);
+		this.ghosts[0].surroundings = [];
+		this.ghosts[0].direction = DIRECTION.LEFT;
+		this.ghosts[0].marker = new Phaser.Point();
+
+		this.physics.arcade.enable(this.ghosts[0]);
+		this.ghosts[0].body.collideWorldBounds = true;
 
 		// big gum's Part
 		this.bigGums = this.add.physicsGroup();
@@ -96,13 +101,13 @@ Game.LevelSingle.prototype = {
 		this.physics.arcade.collide(this.player, this.layer);
 		this.physics.arcade.overlap(this.player, this.bigGums, this.eatBigGum, null, this);
 		this.physics.arcade.overlap(this.player, this.smallGums, this.eatSmallGum, null, this);
-		this.physics.arcade.collide(this.phantoms[0], this.layer);
-		this.physics.arcade.collide(this.player, this.phantoms[0]); //actuellement, les éléments se poussent à tort. utiliser overlap
+		this.physics.arcade.collide(this.ghosts[0], this.layer);
+		this.physics.arcade.overlap(this.player, this.ghosts[0], this.killPlayer, null, this);
 		
-		//phantoms' part
-		this.checkSurroundings(this.phantoms[0]);
-		this.chooseDirection(this.phantoms[0], this.player);
-		this.move(this.phantoms[0]);
+		//ghosts' part
+		this.checkSurroundings(this.ghosts[0]);
+		this.chooseDirection(this.ghosts[0], this.player);
+		this.move(this.ghosts[0]);
 		
 		//player's part
 		this.checkSurroundings(this.player);
@@ -110,10 +115,43 @@ Game.LevelSingle.prototype = {
 		this.move(this.player);
 		this.writeScore(this.player);
 		if (this.debug) {
-			this.writePosition(this.player);
+			//this.writePosition(this.player);
+			this.writeStatus(this.player);
 		}
 	},
 
+	addGhost: function() {
+		var ghost = this.ghosts.getFirstDead();
+
+		if(!ghost) {
+			return;
+		}
+
+		ghost.anchor.setTo(0.5, 0.5);
+		ghost.reset(336, 336)
+		ghost.surroundings = [];
+		ghost.direction = DIRECTION.LEFT;
+		ghost.marker = new Phaser.Point();
+
+		this.physics.arcade.enable(ghost);
+		ghost.body.collideWorldBounds = true;
+		
+	},
+
+	killPlayer: function(player, ghost){
+		if (player.isBigUntil > this.game.time.now) {
+			console.log('player kill ghost');
+			ghost.kill();
+		} else {
+			console.log('ghost kill player');
+			/*if(confirm("player killed by ghost. Restart ?")){
+        		this.state.start('LevelSingle');
+			} else {
+       		 	this.state.start('MenuStart');
+			}*/
+		}
+	},
+	
 	chooseDirection: function(phantom, player){
 		var rand =  Math.floor((Math.random() * 5) + 1); ; 
 		
@@ -132,6 +170,10 @@ Game.LevelSingle.prototype = {
 
 	writeScore: function (player) {
 		this.score.setText("player : " + player.score);
+	},
+
+	writeStatus: function (player) {
+		this.text.setText(this.player.isBigUntil > this.game.time.now ? "BIG" : "normal");
 	},
 
 	writePosition: function (player) {
@@ -171,7 +213,7 @@ Game.LevelSingle.prototype = {
 			player.direction = turnTo;
 		} else if ((this.math.fuzzyEqual(player.y - player.body.halfHeight, player.marker.y * this.gridsize, this.threshold))
 		&& (this.math.fuzzyEqual(player.x - player.body.halfWidth, player.marker.x * this.gridsize, this.threshold))) {
-			if ((player.direction === turnTo) && (this.excludedTiles.indexOf(player.surroundings[turnTo].index) === -1)) {
+			if ((player.direction === turnTo) && (turnTo === null || this.excludedTiles.indexOf(player.surroundings[turnTo].index) === -1)) {
 				//impossible d'avancer.
 				player.direction = null;
 				this.alignPlayer(player);
@@ -224,6 +266,7 @@ Game.LevelSingle.prototype = {
 
 	eatBigGum: function (player, gum) {
 		player.score += 10;
+		player.isBigUntil = this.game.time.now + 5000;
 		gum.kill();
 	},
 
@@ -234,17 +277,15 @@ Game.LevelSingle.prototype = {
 
 	render: function () {
 		if (this.debug) {
-			for (i in this.players) {
-				player = this.players[i];
-				for (direction in this.player.surroundings) {
-					var tile = player.surroundings[direction];
-					var color = 'rgba(0,255,0,0.3)';
-					if (tile !== null) {
-						if (tile.index !== this.safetile) {
-							color = 'rgba(255,0,0,0.3)';
-						}
-						this.game.debug.geom(new Phaser.Rectangle(tile.worldX, tile.worldY, this.gridsize, this.gridsize), color, true);
+			player = this.player;
+			for (direction in this.player.surroundings) {
+				var tile = player.surroundings[direction];
+				var color = 'rgba(0,255,0,0.3)';
+				if (tile !== null) {
+					if (tile.index !== this.safetile) {
+						color = 'rgba(255,0,0,0.3)';
 					}
+					this.game.debug.geom(new Phaser.Rectangle(tile.worldX, tile.worldY, this.gridsize, this.gridsize), color, true);
 				}
 			}
 		}
