@@ -162,6 +162,10 @@ Game.LevelSingle.prototype = {
 		} else if (rand === 5) {
 			this.checkDirections(phantom, phantom.direction);
 		}
+
+		// scavaging : alternate turn in the map at each cross path
+
+		// attack : pursuing the player
 	},
 
 	writeScore: function (player) {
