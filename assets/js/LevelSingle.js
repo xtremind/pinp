@@ -128,6 +128,7 @@ Game.LevelSingle.prototype = {
 		ghost.surroundings = [];
 		ghost.direction = DIRECTION.LEFT;
 		ghost.marker = new Phaser.Point();
+		ghost.noDirectionUntil = this.game.time.now
 
 		this.physics.arcade.enable(ghost);
 		ghost.body.collideWorldBounds = true;
@@ -149,22 +150,24 @@ Game.LevelSingle.prototype = {
 	},
 	
 	chooseDirection: function(phantom, player){
-		var rand =  Math.floor((Math.random() * 5) + 1); ; 
-		
-		if (rand === 1) {
-			this.checkDirections(phantom, DIRECTION.UP);
-		} else if (rand === 2) {
-			this.checkDirections(phantom, DIRECTION.DOWN);
-		} else if (rand === 3) {
-			this.checkDirections(phantom, DIRECTION.LEFT);
-		} else if (rand === 4) {
-			this.checkDirections(phantom, DIRECTION.RIGHT);
-		} else if (rand === 5) {
-			this.checkDirections(phantom, phantom.direction);
-		}
-
 		// scavaging : alternate turn in the map at each cross path
+		if ((this.math.fuzzyEqual(phantom.y - phantom.body.halfHeight, phantom.marker.y * this.gridsize, this.threshold))
+			&& (this.math.fuzzyEqual(phantom.x - phantom.body.halfWidth, phantom.marker.x * this.gridsize, this.threshold))
+			&& phantom.noDirectionUntil < this.game.time.now) {
 
+			var possibleDirection = [];
+			var that = this;
+			Object.keys(phantom.surroundings).forEach(function(key) {
+				if(key !== "null" && phantom.surroundings[key].index == that.safetile)
+					possibleDirection.push(key);
+			});
+		
+			var rand =  Math.floor(Math.random() * possibleDirection.length); 
+			this.checkDirections(phantom, possibleDirection[rand]);
+
+			phantom.noDirectionUntil = this.game.time.now + 100;
+		}
+		
 		// attack : pursuing the player
 	},
 
