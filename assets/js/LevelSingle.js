@@ -158,7 +158,7 @@ Game.LevelSingle.prototype = {
 			var possibleDirection = [];
 			var that = this;
 			Object.keys(phantom.surroundings).forEach(function(key) {
-				if(key !== "null" && phantom.surroundings[key].index == that.safetile)
+				if(key !== "null" && phantom.surroundings[key].index == that.safetile && phantom.direction !== NDIRECTION[key])
 					possibleDirection.push(key);
 			});
 		
@@ -167,7 +167,7 @@ Game.LevelSingle.prototype = {
 
 			phantom.noDirectionUntil = this.game.time.now + 100;
 		}
-		
+
 		// attack : pursuing the player
 	},
 
