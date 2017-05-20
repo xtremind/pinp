@@ -246,22 +246,18 @@ Game.LevelSingle.prototype = {
 		switch (player.direction) {
 			case DIRECTION.RIGHT:
 				player.angle = 0;
-				player.scale.setTo(1, 1);
 				player.body.velocity.x += this.playerSpeed;
 				break;
 			case DIRECTION.LEFT:
-				player.angle = 0;
-				player.scale.setTo(-1, 1);
+				player.angle = 180;
 				player.body.velocity.x -= this.playerSpeed;
 				break;
 			case DIRECTION.UP:
 				player.angle = 270;
-				player.scale.setTo(1, 1);
 				player.body.velocity.y -= this.playerSpeed;
 				break;
 			case DIRECTION.DOWN:
 				player.angle = 90;
-				player.scale.setTo(1, 1);
 				player.body.velocity.y += this.playerSpeed;
 				break;
 		}
