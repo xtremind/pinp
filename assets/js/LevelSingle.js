@@ -8,6 +8,8 @@ Game.LevelSingle = function (game) {
 
 	this.gums = [];
 
+	this.fastWayGrid = new Array(32);
+
 	this.gridsize = 32;
 	this.safetile = 390;
 	this.bigGumTile = 7;
@@ -23,6 +25,7 @@ Game.LevelSingle = function (game) {
 
 var DIRECTION = { UP : "UP", DOWN : "DOWN", LEFT : "LEFT", RIGHT : "RIGHT"};
 var NDIRECTION = { UP : "DOWN", DOWN : "UP", LEFT : "RIGHT", RIGHT : "LEFT"};
+var STATUS = {SCAVAGE : "SCAVAGE", HUNT : "HUNT"};
 
 Game.LevelSingle.prototype = {
 	create : function () {
@@ -101,6 +104,7 @@ Game.LevelSingle.prototype = {
 		//ghosts' part
 		this.ghosts.forEachAlive(function(ghost) {
 			that.checkSurroundings(ghost);
+			that.chooseStatus(ghost);
 			that.chooseDirection(ghost, that.player);
 			that.move(ghost);
 		});
@@ -110,9 +114,56 @@ Game.LevelSingle.prototype = {
 		this.checkKeys(this.player);
 		this.move(this.player);
 		this.writeScore(this.player);
+		this.computeFastWay(this.player);
+
+		// debug's part
 		if (this.debug) {
 			//this.writePosition(this.player);
 			this.writeStatus(this.player);
+		}
+	},
+	chooseStatus: function(ghost){
+		if(ghost.chooseStatus  < this.game.time.now ) {
+			//var rand =  Math.floor(Math.random() * possibleDirection.length); 
+			ghost.status = STATUS.HUNT;
+			ghost.chooseStatus = this.game.time.now + 5000;
+		}
+	},
+
+	initFastWayGrid: function(){
+		this.fastWayGrid = new Array(this.map.width);
+		for (var i = 0; i < this.fastWayGrid.length; i++) {
+			this.fastWayGrid[i] = new Array(this.map.height).fill(-1);
+		}
+	},
+
+	computeFastWay: function(player){
+		// only compute when player in the center of a case
+		if ((this.math.fuzzyEqual(player.y - player.body.halfHeight, player.marker.y * this.gridsize, this.threshold))
+			&& (this.math.fuzzyEqual(player.x - player.body.halfWidth, player.marker.x * this.gridsize, this.threshold))) {
+			
+			this.initFastWayGrid();
+			this.computeFastWayPoint(player.marker.x, player.marker.y, 0);
+
+		}
+	},
+
+	computeFastWayPoint: function(x, y, value){
+		// change value only if not exist
+		if (this.fastWayGrid[x][y] === -1 || this.fastWayGrid[x][y] > value){
+			this.fastWayGrid[x][y] = value;
+
+			//compute for any near title of the current point that is a safe titlte		
+			this.computeNextFastWayPoint(this.map.getTileLeft(this.layer.index, x, y), value+1);
+			this.computeNextFastWayPoint(this.map.getTileRight(this.layer.index, x, y), value+1);
+			this.computeNextFastWayPoint(this.map.getTileAbove(this.layer.index, x, y), value+1);
+			this.computeNextFastWayPoint(this.map.getTileBelow(this.layer.index, x, y), value+1);
+		}
+	},
+
+	computeNextFastWayPoint: function(tile, value) {
+		if((this.excludedTiles.indexOf(tile.index) !== -1)){
+			this.computeFastWayPoint(tile.x, tile.y, value);
 		}
 	},
 
@@ -128,7 +179,9 @@ Game.LevelSingle.prototype = {
 		ghost.surroundings = [];
 		ghost.direction = DIRECTION.LEFT;
 		ghost.marker = new Phaser.Point();
-		ghost.noDirectionUntil = this.game.time.now
+		ghost.noDirectionUntil = this.game.time.now;
+		ghost.status = STATUS.SCAVAGE;
+		ghost.chooseStatus = this.game.time.now + 5000;
 
 		this.physics.arcade.enable(ghost);
 		ghost.body.collideWorldBounds = true;
@@ -150,25 +203,53 @@ Game.LevelSingle.prototype = {
 	},
 	
 	chooseDirection: function(phantom, player){
-		// scavaging : alternate turn in the map at each cross path
+		
 		if ((this.math.fuzzyEqual(phantom.y - phantom.body.halfHeight, phantom.marker.y * this.gridsize, this.threshold))
 			&& (this.math.fuzzyEqual(phantom.x - phantom.body.halfWidth, phantom.marker.x * this.gridsize, this.threshold))
 			&& phantom.noDirectionUntil < this.game.time.now) {
-
 			var possibleDirection = [];
+			var direction = null;
+			var currentValue = 999;
 			var that = this;
 			Object.keys(phantom.surroundings).forEach(function(key) {
 				if(key !== "null" && phantom.surroundings[key].index == that.safetile && phantom.direction !== NDIRECTION[key])
 					possibleDirection.push(key);
 			});
+		 
+			// scavaging : alternate turn in the map at each cross path
+			if (phantom.status === STATUS.SCAVAGE){	
+				var rand =  Math.floor(Math.random() * possibleDirection.length); 
+				direction = possibleDirection[rand];
+			}
 		
-			var rand =  Math.floor(Math.random() * possibleDirection.length); 
-			this.checkDirections(phantom, possibleDirection[rand]);
+			// attack : pursuing the player
+			if (phantom.status === STATUS.HUNT){
+				for(var i = 0; i < possibleDirection.length; i++){
+					if (direction === null || currentValue > this.getValue(phantom, possibleDirection[i])){
+						direction = possibleDirection[i];
+						currentValue = this.getValue(phantom, direction);
+					}
+				}
+			}
 
+			this.checkDirections(phantom, direction);
 			phantom.noDirectionUntil = this.game.time.now + 100;
 		}
 
-		// attack : pursuing the player
+	},
+
+	getValue: function(ghost, direction){
+		var tile;
+		if (direction === DIRECTION.LEFT)
+			var tile = this.map.getTileLeft(this.layer.index, ghost.marker.x, ghost.marker.y);
+		if (direction === DIRECTION.RIGHT)
+			var tile = this.map.getTileRight(this.layer.index, ghost.marker.x, ghost.marker.y);
+		if (direction === DIRECTION.UP)
+			var tile = this.map.getTileAbove(this.layer.index, ghost.marker.x, ghost.marker.y);
+		if (direction === DIRECTION.DOWN)
+			var tile = this.map.getTileBelow(this.layer.index, ghost.marker.x, ghost.marker.y);
+
+		return this.fastWayGrid[tile.x][tile.y];
 	},
 
 	writeScore: function (player) {
