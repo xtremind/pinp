@@ -25,7 +25,7 @@ Game.LevelSingle = function (game) {
 
 var DIRECTION = { UP : "UP", DOWN : "DOWN", LEFT : "LEFT", RIGHT : "RIGHT"};
 var NDIRECTION = { UP : "DOWN", DOWN : "UP", LEFT : "RIGHT", RIGHT : "LEFT"};
-var STATUS = {SCAVAGE : "SCAVAGE", HUNT : "HUNT"};
+var STATUS = {SCAVAGE : "SCAVAGE", HUNT : "HUNT", FEAR : "FEAR"};
 
 Game.LevelSingle.prototype = {
 	create : function () {
@@ -73,8 +73,8 @@ Game.LevelSingle.prototype = {
 		// ghosts' Part
 		this.ghosts = this.game.add.group();
 		this.ghosts.enableBody = true;
-		this.ghosts.createMultiple(4, 'phantom');
-		this.game.time.events.loop(5000, this.addGhost, this);
+		this.ghosts.createMultiple(4, 'pink_phantom');
+		this.game.time.events.loop(3000, this.addGhost, this);
 		this.addGhost();
 
 		// big gum's Part
@@ -104,9 +104,10 @@ Game.LevelSingle.prototype = {
 		//ghosts' part
 		this.ghosts.forEachAlive(function(ghost) {
 			that.checkSurroundings(ghost);
-			that.chooseStatus(ghost);
+			that.chooseStatus(that.player, ghost);
 			that.chooseDirection(ghost, that.player);
 			that.move(ghost);
+			that.updateSprite(ghost);
 		});
 		
 		//player's part
@@ -122,11 +123,27 @@ Game.LevelSingle.prototype = {
 			this.writeStatus(this.player);
 		}
 	},
-	chooseStatus: function(ghost){
-		if(ghost.chooseStatus  < this.game.time.now ) {
+
+	updateSprite: function (ghost){
+		if (ghost.status === STATUS.FEAR) {
+			//console.log ("FEAR");
+			ghost.loadTexture("fear_ghost");
+		} else if (ghost.status === STATUS.HUNT) {
+			//console.log ("HUNT");
+			ghost.loadTexture("red_phantom");
+		} else {
+			//console.log ("SCAVAGE");
+			ghost.loadTexture("pink_phantom");
+		}
+	},
+
+	chooseStatus: function(player, ghost){
+		if (player.isBigUntil > that.game.time.now){
+			ghost.status = STATUS.FEAR;
+		} else if(ghost.chooseStatus  < this.game.time.now ) {
 			//var rand =  Math.floor(Math.random() * possibleDirection.length); 
-			ghost.status = STATUS.HUNT;
-			ghost.chooseStatus = this.game.time.now + 5000;
+			ghost.status = (ghost.status == STATUS.SCAVAGE ? STATUS.HUNT : STATUS.SCAVAGE);
+			ghost.chooseStatus = ghost.chooseStatus + 5000;
 		}
 	},
 
@@ -203,7 +220,6 @@ Game.LevelSingle.prototype = {
 	},
 	
 	chooseDirection: function(phantom, player){
-		
 		if ((this.math.fuzzyEqual(phantom.y - phantom.body.halfHeight, phantom.marker.y * this.gridsize, this.threshold))
 			&& (this.math.fuzzyEqual(phantom.x - phantom.body.halfWidth, phantom.marker.x * this.gridsize, this.threshold))
 			&& phantom.noDirectionUntil < this.game.time.now) {
@@ -226,6 +242,16 @@ Game.LevelSingle.prototype = {
 			if (phantom.status === STATUS.HUNT){
 				for(var i = 0; i < possibleDirection.length; i++){
 					if (direction === null || currentValue > this.getValue(phantom, possibleDirection[i])){
+						direction = possibleDirection[i];
+						currentValue = this.getValue(phantom, direction);
+					}
+				}
+			}
+
+			// fear : leave the player
+			if (phantom.status === STATUS.FEAR) {
+				for(var i = 0; i < possibleDirection.length; i++){
+					if (direction === null || currentValue < this.getValue(phantom, possibleDirection[i])){
 						direction = possibleDirection[i];
 						currentValue = this.getValue(phantom, direction);
 					}

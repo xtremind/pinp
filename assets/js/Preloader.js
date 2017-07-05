@@ -20,7 +20,9 @@ Game.Preloader.prototype = {
         this.load.image('tileset', 'assets/img/tileset_map2.png');
         
         this.load.spritesheet('player', 'assets/img/player.png');
-        this.load.spritesheet('phantom', 'assets/img/red_ghost.png');
+        this.load.spritesheet('red_phantom', 'assets/img/red_ghost.png');
+        this.load.spritesheet('pink_phantom', 'assets/img/pink_ghost.png');
+        this.load.spritesheet('fear_ghost', 'assets/img/fear_ghost.png');
         this.load.spritesheet('smallGum', 'assets/img/small_gum.png');
         this.load.spritesheet('bigGum', 'assets/img/big_gum.png');
     },
