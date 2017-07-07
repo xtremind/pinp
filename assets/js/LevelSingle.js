@@ -223,42 +223,41 @@ Game.LevelSingle.prototype = {
 		if ((this.math.fuzzyEqual(phantom.y - phantom.body.halfHeight, phantom.marker.y * this.gridsize, this.threshold))
 			&& (this.math.fuzzyEqual(phantom.x - phantom.body.halfWidth, phantom.marker.x * this.gridsize, this.threshold))
 			&& phantom.noDirectionUntil < this.game.time.now) {
-			var possibleDirection = [];
-			var direction = null;
-			var currentValue = 999;
+			var neighborhood = [];
+			var direstionPossible = [];
 			var that = this;
 			Object.keys(phantom.surroundings).forEach(function(key) {
 				if(key !== "null" && phantom.surroundings[key].index == that.safetile && phantom.direction !== NDIRECTION[key])
-					possibleDirection.push(key);
+					neighborhood.push(key);
 			});
 		 
-			// scavaging : alternate turn in the map at each cross path
 			if (phantom.status === STATUS.SCAVAGE){	
-				var rand =  Math.floor(Math.random() * possibleDirection.length); 
-				direction = possibleDirection[rand];
-			}
-		
-			// attack : pursuing the player
-			if (phantom.status === STATUS.HUNT){
-				for(var i = 0; i < possibleDirection.length; i++){
-					if (direction === null || currentValue > this.getValue(phantom, possibleDirection[i])){
-						direction = possibleDirection[i];
-						currentValue = this.getValue(phantom, direction);
+				direstionPossible = neighborhood;
+			} else if (phantom.status === STATUS.HUNT){
+				var currentValue = 999;
+				for(var i = 0; i < neighborhood.length; i++){
+					if (currentValue === this.getValue(phantom, neighborhood[i])){
+						direstionPossible.push(neighborhood[i])
+					} else if (currentValue > this.getValue(phantom, neighborhood[i])){
+						direstionPossible = [neighborhood[i]];
+						currentValue = this.getValue(phantom, neighborhood[i]);
+					}
+				}
+			} else if (phantom.status === STATUS.FEAR) {
+				var currentValue = 0;
+				for(var i = 0; i < neighborhood.length; i++){
+					if (currentValue === this.getValue(phantom, neighborhood[i])){
+						direstionPossible.push(neighborhood[i])
+					} else if (currentValue < this.getValue(phantom, neighborhood[i])){
+						direstionPossible = [neighborhood[i]];
+						currentValue = this.getValue(phantom, neighborhood[i]);
 					}
 				}
 			}
 
-			// fear : leave the player
-			if (phantom.status === STATUS.FEAR) {
-				for(var i = 0; i < possibleDirection.length; i++){
-					if (direction === null || currentValue < this.getValue(phantom, possibleDirection[i])){
-						direction = possibleDirection[i];
-						currentValue = this.getValue(phantom, direction);
-					}
-				}
-			}
+			var rand =  Math.floor(Math.random() * direstionPossible.length);
 
-			this.checkDirections(phantom, direction);
+			this.checkDirections(phantom, direstionPossible[rand]);
 			phantom.noDirectionUntil = this.game.time.now + 100;
 		}
 
