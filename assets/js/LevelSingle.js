@@ -179,7 +179,7 @@ Game.LevelSingle.prototype = {
 	},
 
 	computeNextFastWayPoint: function(tile, value) {
-		if((this.excludedTiles.indexOf(tile.index) !== -1)){
+		if(tile !== null && this.excludedTiles.indexOf(tile.index) !== -1){
 			this.computeFastWayPoint(tile.x, tile.y, value);
 		}
 	},
@@ -214,7 +214,7 @@ Game.LevelSingle.prototype = {
 			/*if(confirm("player killed by ghost. Restart ?")){
         		this.state.start('LevelSingle');
 			} else {
-       		 	this.state.start('MenuStart');
+       		 	this.state.start('MainMenu');
 			}*/
 		}
 	},
