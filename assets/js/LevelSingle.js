@@ -29,8 +29,6 @@ var STATUS = {SCAVAGE : "SCAVAGE", HUNT : "HUNT", FEAR : "FEAR"};
 
 Game.LevelSingle.prototype = {
 	create : function () {
-		var that = this;
-
 		this.stage.backgroundColor = '#3A5963';
 
 		this.map = this.add.tilemap('map', this.gridsize, this.gridsize);
@@ -60,7 +58,7 @@ Game.LevelSingle.prototype = {
 		this.player.marker = new Phaser.Point();
 
 		this.physics.arcade.enable(this.player);
-		this.player.body.collideWorldBounds = true;
+		this.player.body.collideWorldBounds = false; // set true for no out of bound
 		this.player.score = 0;
 
 		this.player.controls = {
@@ -92,7 +90,7 @@ Game.LevelSingle.prototype = {
 	},
 
 	update : function () {
-		that = this;
+		var that = this;
 
 		//physics
 		this.physics.arcade.collide(this.player, this.layer);
@@ -138,7 +136,7 @@ Game.LevelSingle.prototype = {
 	},
 
 	chooseStatus: function(player, ghost){
-		if (player.isBigUntil > that.game.time.now){
+		if (player.isBigUntil > this.game.time.now){
 			ghost.status = STATUS.FEAR;
 		} else if(ghost.chooseStatus  < this.game.time.now ) {
 			//var rand =  Math.floor(Math.random() * possibleDirection.length); 
@@ -154,9 +152,17 @@ Game.LevelSingle.prototype = {
 		}
 	},
 
+	isInbound: function (player) {
+		return player.marker.x > -1 
+			&& player.marker.y > -1
+			&& player.marker.x < this.game.height / this.gridsize
+			&& player.marker.y < this.game.width / this.gridsize;
+	},
+
 	computeFastWay: function(player){
 		// only compute when player in the center of a case
-		if ((this.math.fuzzyEqual(player.y - player.body.halfHeight, player.marker.y * this.gridsize, this.threshold))
+		if ( this.isInbound(player) &&
+			(this.math.fuzzyEqual(player.y - player.body.halfHeight, player.marker.y * this.gridsize, this.threshold))
 			&& (this.math.fuzzyEqual(player.x - player.body.halfWidth, player.marker.x * this.gridsize, this.threshold))) {
 			
 			this.initFastWayGrid();
@@ -219,23 +225,24 @@ Game.LevelSingle.prototype = {
 		}
 	},
 	
-	chooseDirection: function(phantom, player){
+	chooseDirection: function(phantom){
 		if ((this.math.fuzzyEqual(phantom.y - phantom.body.halfHeight, phantom.marker.y * this.gridsize, this.threshold))
 			&& (this.math.fuzzyEqual(phantom.x - phantom.body.halfWidth, phantom.marker.x * this.gridsize, this.threshold))
 			&& phantom.noDirectionUntil < this.game.time.now) {
 			var neighborhood = [];
 			var direstionPossible = [];
 			var that = this;
+			var currentValue
 			Object.keys(phantom.surroundings).forEach(function(key) {
-				if(key !== "null" && phantom.surroundings[key].index == that.safetile && phantom.direction !== NDIRECTION[key])
+				if(key !== "null" && phantom.surroundings[key] !== null && phantom.surroundings[key].index == that.safetile && phantom.direction !== NDIRECTION[key])
 					neighborhood.push(key);
 			});
-		 
-			if (phantom.status === STATUS.SCAVAGE){	
+		
+			if (phantom.status === STATUS.SCAVAGE) {	
 				direstionPossible = neighborhood;
-			} else if (phantom.status === STATUS.HUNT){
-				var currentValue = 999;
-				for(var i = 0; i < neighborhood.length; i++){
+			} else if (phantom.status === STATUS.HUNT) {
+				currentValue = 999;
+				for(var i = 0; i < neighborhood.length; i++) {
 					if (currentValue === this.getValue(phantom, neighborhood[i])){
 						direstionPossible.push(neighborhood[i])
 					} else if (currentValue > this.getValue(phantom, neighborhood[i])){
@@ -244,7 +251,7 @@ Game.LevelSingle.prototype = {
 					}
 				}
 			} else if (phantom.status === STATUS.FEAR) {
-				var currentValue = 0;
+				currentValue = 0;
 				for(var i = 0; i < neighborhood.length; i++){
 					if (currentValue === this.getValue(phantom, neighborhood[i])){
 						direstionPossible.push(neighborhood[i])
@@ -266,13 +273,13 @@ Game.LevelSingle.prototype = {
 	getValue: function(ghost, direction){
 		var tile;
 		if (direction === DIRECTION.LEFT)
-			var tile = this.map.getTileLeft(this.layer.index, ghost.marker.x, ghost.marker.y);
+			tile = this.map.getTileLeft(this.layer.index, ghost.marker.x, ghost.marker.y);
 		if (direction === DIRECTION.RIGHT)
-			var tile = this.map.getTileRight(this.layer.index, ghost.marker.x, ghost.marker.y);
+			tile = this.map.getTileRight(this.layer.index, ghost.marker.x, ghost.marker.y);
 		if (direction === DIRECTION.UP)
-			var tile = this.map.getTileAbove(this.layer.index, ghost.marker.x, ghost.marker.y);
+			tile = this.map.getTileAbove(this.layer.index, ghost.marker.x, ghost.marker.y);
 		if (direction === DIRECTION.DOWN)
-			var tile = this.map.getTileBelow(this.layer.index, ghost.marker.x, ghost.marker.y);
+			tile = this.map.getTileBelow(this.layer.index, ghost.marker.x, ghost.marker.y);
 
 		return this.fastWayGrid[tile.x][tile.y];
 	},
@@ -282,7 +289,7 @@ Game.LevelSingle.prototype = {
 	},
 
 	writeStatus: function (player) {
-		this.text.setText(this.player.isBigUntil > this.game.time.now ? "BIG" : "normal");
+		this.text.setText(player.isBigUntil > this.game.time.now ? "BIG" : "normal");
 	},
 
 	writePosition: function (player) {
@@ -322,11 +329,11 @@ Game.LevelSingle.prototype = {
 			player.direction = turnTo;
 		} else if ((this.math.fuzzyEqual(player.y - player.body.halfHeight, player.marker.y * this.gridsize, this.threshold))
 		&& (this.math.fuzzyEqual(player.x - player.body.halfWidth, player.marker.x * this.gridsize, this.threshold))) {
-			if ((player.direction === turnTo) && (turnTo === null || this.excludedTiles.indexOf(player.surroundings[turnTo].index) === -1)) {
+			if ((player.direction === turnTo) && (turnTo === null || player.surroundings[turnTo] !== null && this.excludedTiles.indexOf(player.surroundings[turnTo].index) === -1)) {
 				//impossible d'avancer.
 				player.direction = null;
 				this.alignPlayer(player);
-			} else if ((player.surroundings[turnTo] === null) || (this.excludedTiles.indexOf(player.surroundings[turnTo].index) === -1)) {
+			} else if ((player.surroundings[turnTo] === null) || ( player.surroundings[turnTo] !== null && this.excludedTiles.indexOf(player.surroundings[turnTo].index) === -1)) {
 				// impossible de tourner, il y a un mur
 				return;
 			} else {
@@ -382,8 +389,8 @@ Game.LevelSingle.prototype = {
 
 	render: function () {
 		if (this.debug) {
-			player = this.player;
-			for (direction in this.player.surroundings) {
+			var player = this.player;
+			for (var direction in player.surroundings) {
 				var tile = player.surroundings[direction];
 				var color = 'rgba(0,255,0,0.3)';
 				if (tile !== null) {
